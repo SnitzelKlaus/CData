@@ -11,28 +11,18 @@ void printWeatherData(const WeatherData* wd) {
 }
 
 void traverseAndPrint(BTreeNode* root, FILE* fp) {
-    if (root != NULL) { // Base case: If the node is NULL, do nothing
-        printf("Traversing node at offset %ld with %d keys\n", root->self_offset, root->n_keys);
+    if (root != NULL) {
         for (int i = 0; i < root->n_keys; i++) {
-            // Load and traverse the child node before printing the current node's key
             BTreeNode* child = loadNode(fp, root->children_offsets[i]);
-            if (child != NULL) {
-                printf("Traversing child at index %d of node at offset %ld\n", i, root->self_offset);
-                traverseAndPrint(child, fp); // Recursive call for the child
-                free(child); // Free the memory after use
-            }
-            printWeatherData(&root->keys[i]); // Print the current key after traversing the left child
+            traverseAndPrint(child, fp);
+            free(child);
+            printWeatherData(&root->keys[i]);
         }
-        // Traverse the last child after printing all keys
-        BTreeNode* lastChild = loadNode(fp, root->children_offsets[root->n_keys]);
-        if (lastChild != NULL) {
-            printf("Traversing last child of node at offset %ld\n", root->self_offset);
-            traverseAndPrint(lastChild, fp); // Recursive call for the last child
-            free(lastChild); // Free the memory after use
-        }
+        BTreeNode* child = loadNode(fp, root->children_offsets[root->n_keys]);
+        traverseAndPrint(child, fp);
+        free(child);
     }
 }
-
 
 void searchAndPrint(BTreeNode* root, char* datetime, FILE* fp) {
     WeatherData* result = search(root, datetime, fp);
@@ -45,10 +35,10 @@ void searchAndPrint(BTreeNode* root, char* datetime, FILE* fp) {
 
 int main() {
     BTreeNode* root = NULL;
-    const char* db_filename = "weather_data.db";
-    FILE* db_file = fopen(db_filename, "r+b");  // Open the file for update
+    const char* db_filename = "weather_data.dat";
+    FILE* db_file = fopen(db_filename, "r+b");
 
-    if (!db_file) {  // Create new file if it does not exist
+    if (!db_file) {
         db_file = fopen(db_filename, "w+b");
     }
 
@@ -72,7 +62,7 @@ int main() {
             case 1:
                 printf("Enter CSV filename: ");
                 fgets(input, sizeof(input), stdin);
-                input[strcspn(input, "\n")] = 0;  // Remove newline character
+                input[strcspn(input, "\n")] = 0;
                 if (loadWeatherData(input, db_file, &root) != 0) {
                     printf("Failed to load data from %s.\n", input);
                 } else {
@@ -96,7 +86,7 @@ int main() {
         }
     }
 
-    fclose(db_file);  // Close the database file properly
+    fclose(db_file);
     printf("Database file closed.\n");
     return 0;
 }
