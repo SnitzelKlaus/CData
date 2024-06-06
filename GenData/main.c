@@ -1,36 +1,21 @@
 #include "database.h"
-#include "item.h"
-#include "generic_structs.h"
-#include<stdio.h>
+#include "models.h"
+#include "csv_handler.h"
 
-int main()
-{
-    PGconn *conn = init_db();
+int main() {
+    const char *conninfo = "dbname=GenData user=postgres password=Hoffstein hostaddr=127.0.0.1 port=5432";
+    PGconn *conn = init_db(conninfo);
 
-    FieldDescriptor item_fields[] = {
-        {"id", "SERIAL PRIMARY KEY"},
-        {"datetime", "TIMESTAMP"},
-        {"location", "VARCHAR(255)"},
-        {"temp", "VARCHAR(255)"},
-    };
+    if (conn == NULL) return 1;
 
-    TableDescriptor item_table = {
-        "tesie",
-        item_fields,
-        2,
-    };
-    
-    create_table(conn, &item_table);
+    create_table(conn, WEATHER_TABLE_CREATION);
 
-    // Item item = {
-    //     .id = 1,
-    //     .name = "Item 1",
-    // };
-
-    // insert_item(conn, &item);
-
-    query_items(conn);
+    // Inserts data from the CSV file
+    insert_csv_data(conn, "../weather_data.csv");
 
     close_conn(conn);
     return 0;
 }
+
+
+// gcc -I"C:/Frameworks/PostgreSQL/16/include" -L"C:/Frameworks/PostgreSQL/16/lib" main.c database.c csv_handler.c -o main -lpq

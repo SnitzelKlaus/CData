@@ -4,6 +4,8 @@
         "item.h": "c",
         "libpq-fe.h": "c",
         "database.h": "c",
-        "generic_structs.h": "c"
+        "generic_structs.h": "c",
+        "csv_loader.h": "c",
+        "stdio.h": "c"
     }
 }
