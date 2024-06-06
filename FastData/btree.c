@@ -1,3 +1,4 @@
+// btree.c
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
@@ -6,31 +7,74 @@
 // Creates a new B-tree node. If leaf is true, it is a leaf node. The node is written to the file pointed to by fp.
 BTreeNode* createNode(bool leaf, FILE* fp) {
     BTreeNode* node = (BTreeNode*)malloc(sizeof(BTreeNode));
+    if (node == NULL) {
+        perror("Failed to allocate memory for BTreeNode");
+        exit(EXIT_FAILURE);
+    }
     node->n_keys = 0;
     node->leaf = leaf;
-    node->self_offset = ftell(fp);  // Set the offset at the current file pointer position
+    fseek(fp, 0, SEEK_END); // Move to the end of the file
+    node->self_offset = ftell(fp); // Set the offset at the current file pointer position
     for (int i = 0; i < MAX_KEYS + 1; i++) {
-        node->children_offsets[i] = -1;  // Initialize children offsets to -1
+        node->children_offsets[i] = -1; // Initialize children offsets to -1
     }
-    saveNode(node, fp);  // Immediately save the new node
+    saveNode(node, fp); // Immediately save the new node
     printf("Created new %s node at offset %ld\n", leaf ? "leaf" : "internal", node->self_offset);
     return node;
 }
 
+
 // Saves the node to the file at the node's offset.
 void saveNode(BTreeNode* node, FILE* fp) {
-    fseek(fp, node->self_offset, SEEK_SET); // Move the file pointer to the node's offset
-    fwrite(node, sizeof(BTreeNode), 1, fp); // Write the node to the file
+    printf("Before saving node, seeking to offset %ld\n", node->self_offset);
+    if (fseek(fp, node->self_offset, SEEK_SET) != 0) {
+        perror("Failed to seek to node offset");
+        exit(EXIT_FAILURE);
+    }
+    printf("After seeking, current file offset is %ld\n", ftell(fp));
+    
+    // Validate node data before saving
+    for (int i = 0; i < node->n_keys; i++) {
+        printf("Saving key %d: %s\n", i, node->keys[i].datetime);
+    }
+    
+    if (fwrite(node, sizeof(BTreeNode), 1, fp) != 1) {
+        perror("Failed to write node to file");
+        exit(EXIT_FAILURE);
+    }
     printf("Saved node with %d keys at offset %ld\n", node->n_keys, node->self_offset);
 }
+
 
 // Loads a node from the file at the given offset. Returns NULL if the offset is -1.
 BTreeNode* loadNode(FILE* fp, long offset) {
     if (offset == -1) return NULL; // If the offset is -1, return NULL (no node)
+    
     BTreeNode* node = (BTreeNode*)malloc(sizeof(BTreeNode));
-    fseek(fp, offset, SEEK_SET); // Move the file pointer to the offset
-    fread(node, sizeof(BTreeNode), 1, fp); // Read the node from the file
+    
+    if (node == NULL) {
+        perror("Failed to allocate memory for BTreeNode");
+        exit(EXIT_FAILURE);
+    }
+    
+    printf("Before loading node, seeking to offset %ld\n", offset);
+    if (fseek(fp, offset, SEEK_SET) != 0) {
+        perror("Failed to seek to node offset");
+        exit(EXIT_FAILURE);
+    }
+    printf("After seeking, current file offset is %ld\n", ftell(fp));
+    
+    if (fread(node, sizeof(BTreeNode), 1, fp) != 1) {
+        perror("Failed to read node from file");
+        exit(EXIT_FAILURE);
+    }
+    
+    // Validate node data after loading
     printf("Loaded node with %d keys from offset %ld\n", node->n_keys, offset);
+    for (int i = 0; i < node->n_keys; i++) {
+        printf("Loaded key %d: %s\n", i, node->keys[i].datetime);
+    }
+    
     return node;
 }
 
@@ -39,7 +83,7 @@ void insert(BTreeNode** root, WeatherData data, FILE* fp) {
     if (*root == NULL) {
         *root = createNode(1, fp);  // Create a new root node if root is NULL
     }
-    
+
     BTreeNode* r = *root;
     if (r->n_keys == MAX_KEYS) {  // If the root is full, grow the tree height
         BTreeNode* s = createNode(0, fp);  // Create a new node that is not a leaf
@@ -78,6 +122,7 @@ void insertNonFull(BTreeNode* node, WeatherData data, FILE* fp) {
             }
         }
         insertNonFull(child, data, fp); // Insert the data into the appropriate child
+        free(child); // Free the memory after use
     }
 }
 
@@ -114,6 +159,9 @@ void splitChild(BTreeNode* parent, int i, FILE* fp) {
 
     printf("Split child node at offset %ld into two nodes at offsets %ld and %ld\n",
            y->self_offset, y->self_offset, z->self_offset);
+
+    free(y); // Free the memory of the old node
+    free(z); // Free the memory of the new node
 }
 
 // Searches for a record with the given datetime in the B-tree.
@@ -137,7 +185,9 @@ WeatherData* search(BTreeNode* root, char* datetime, FILE* fp) {
     } else {
         printf("Traversing child at index %d of node at offset %ld\n", i, root->self_offset);
         BTreeNode* child = loadNode(fp, root->children_offsets[i]);
-        return search(child, datetime, fp); // Recursively search the child
+               WeatherData* result = search(child, datetime, fp); // Recursively search the child
+        free(child); // Free the memory after use
+        return result;
     }
 }
 
@@ -150,6 +200,7 @@ void traverse(BTreeNode* root, FILE* fp) {
         if (!root->leaf) {
             BTreeNode* child = loadNode(fp, root->children_offsets[i]);
             traverse(child, fp); // Recursively traverse the child
+            free(child); // Free the memory after use
         }
         // Print the weather data of the current key
         printf("Datetime: %s, Location: %s, Temp: %.2f, UV: %.2f, Pollen: %d, Wind: %.2f, Feels Like: %.2f, Pressure: %.2f, Rain: %.2f\n",
@@ -160,5 +211,7 @@ void traverse(BTreeNode* root, FILE* fp) {
     if (!root->leaf) {
         BTreeNode* child = loadNode(fp, root->children_offsets[i]);
         traverse(child, fp); // Recursively traverse the last child
+        free(child); // Free the memory after use
     }
 }
+
