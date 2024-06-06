@@ -1,0 +1,8 @@
+{
+    "files.associations": {
+        "*.embeddedhtml": "html",
+        "csv_handler.h": "c",
+        "stdio.h": "c",
+        "stdlib.h": "c"
+    }
+}

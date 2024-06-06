@@ -6,6 +6,8 @@
         "database.h": "c",
         "generic_structs.h": "c",
         "csv_loader.h": "c",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "stdlib.h": "c",
+        "windows.h": "c"
     }
 }
