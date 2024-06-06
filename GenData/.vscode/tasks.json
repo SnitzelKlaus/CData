@@ -1,0 +1,31 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "build my project",
+            "type": "shell",
+            "command": "gcc",
+            "args": [
+                "-I", "C:/Frameworks/PostgreSQL/16/include",
+                "-I", "${workspaceFolder}",
+                "-L", "C:/Frameworks/PostgreSQL/16/lib",
+                "${workspaceFolder}/main.c",
+                "${workspaceFolder}/database.c",
+                "-o", "${workspaceFolder}/main",
+                "-lpq",
+                "-mconsole"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": [
+                "$gcc"
+            ]
+        }
+    ]
+}
